@@ -1,0 +1,20 @@
+#!/bin/sh
+# Auto-bump the asset cache-busting version (?v=) whenever CSS/JS changes.
+# Enable once per clone with:  git config core.hooksPath .githooks
+root=$(git rev-parse --show-toplevel)
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+echo "$staged" | grep -qE '^assets/.*\.(css|js)$' || exit 0
+
+ver=$(date +%Y%m%d%H%M%S)
+if command -v powershell.exe >/dev/null 2>&1; then
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root/tools/bump-assets.ps1" -Version "$ver" || exit 1
+else
+  for f in index.html tour-buon-ma-thuot.html; do
+    [ -f "$root/$f" ] || continue
+    sed -i -E "s#(assets/[A-Za-z0-9._/-]+\.(css|js))(\?v=[0-9]+)?#\1?v=$ver#g" "$root/$f"
+  done
+fi
+
+git add "$root/index.html" "$root/tour-buon-ma-thuot.html" 2>/dev/null
+echo "cache-bust: assets -> ?v=$ver"
+exit 0
