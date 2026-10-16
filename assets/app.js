@@ -283,7 +283,8 @@
     flights.forEach(function (wrap) {
       var f = buildFlight(wrap);
       if (!f) return;
-      if (!hasGSAP) { staticFlight(f); renderFlight(f, 0); return; }
+      if (reduce) { staticFlight(f); renderFlight(f, 0); return; }
+      if (!hasGSAP) return;
       var o = { p: 0 };
       wrap.__o = o;
       gsap.to(o, {
@@ -300,10 +301,11 @@
     clearTimeout(rT);
     rT = setTimeout(function () {
       flights.forEach(function (wrap) {
-        var p = wrap.__o ? wrap.__o.p : 0;
+        var p = wrap.__o ? wrap.__o.p : (wrap.__p || 0);
         var f = buildFlight(wrap);
         if (!f) return;
-        if (!hasGSAP) { staticFlight(f); renderFlight(f, 0); return; }
+        if (reduce) { staticFlight(f); renderFlight(f, 0); return; }
+        if (!hasGSAP) { renderFlight(f, wrap.__p || 0); return; }
         renderFlight(f, p);
       });
       if (hasGSAP) ScrollTrigger.refresh();
@@ -451,6 +453,32 @@
     Array.prototype.forEach.call(document.querySelectorAll(".reveal"), function (el) { io.observe(el); });
 
     buildFlights();
+
+    if (!reduce) {
+      var rafF = 0;
+      var runFlights = function () {
+        var vh = window.innerHeight;
+        var sy = window.scrollY || document.documentElement.scrollTop;
+        flights.forEach(function (wrap) {
+          var f = wrap.__flight;
+          if (!f || f.fixed) return;
+          var rect = wrap.getBoundingClientRect();
+          var top = rect.top + sy;
+          var start = top - vh * 0.74;
+          var end = top + wrap.offsetHeight - vh * 0.62;
+          var p = end > start ? Math.min(1, Math.max(0, (sy - start) / (end - start))) : 1;
+          wrap.__p = p;
+          renderFlight(f, p);
+        });
+      };
+      var onFly = function () { if (rafF) return; rafF = requestAnimationFrame(function () { rafF = 0; runFlights(); }); };
+      window.addEventListener("scroll", onFly, { passive: true });
+      window.addEventListener("resize", onFly);
+      window.addEventListener("load", onFly);
+      runFlights();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(onFly);
+    }
+
     window.addEventListener("resize", refreshFlights);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { refreshFlights(); });
   }
