@@ -6,6 +6,7 @@
   var ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.7-7-11a7 7 0 1 1 14 0c0 5.3-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>';
   var ROUTE = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2.4"/><circle cx="18" cy="5" r="2.4"/><path d="M8.2 17.3 15.8 6.7"/></svg>';
   var CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.5V12l3 1.8"/></svg>';
+  var PLANE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round"/><path d="M22 2 15 22l-4-9-9-4z" fill="#D9481F" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg>';
 
   var ICO = {
     plane:'<svg viewBox="0 0 24 24"><path d="M21 15.5 3 12l18-3.5"/><path d="M21 15.5 15 21l-1.6-5.6"/><path d="M21 8.5 15 3l-1.6 5.6"/></svg>',
@@ -54,10 +55,13 @@
     return best || "pin";
   }
 
-  var PLANE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M22 2 15 22l-4-9-9-4z" fill="#D9481F" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>';
-
   var days = window.TOUR_DAYS || [];
   var heroRoute = window.HERO_ROUTE || [];
+
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var hoverFine = window.matchMedia("(hover: hover) and (min-width:861px)").matches;
+  var hasGSAP = !reduce && !!window.gsap && !!window.ScrollTrigger;
+  if (hasGSAP) gsap.registerPlugin(ScrollTrigger);
 
   function dirURL(q) { return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(q); }
   function mapURL(q) { return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q); }
@@ -101,7 +105,7 @@
         '</div>' +
         '<div class="stops-wrap">' +
           '<svg class="flight" aria-hidden="true" preserveAspectRatio="none"></svg>' +
-          '<div class="plane" aria-hidden="true">' + PLANE_SVG + '</div>' +
+          '<div class="plane" aria-hidden="true">' + PLANE + '</div>' +
           '<ol class="stops"></ol>' +
         '</div>';
 
@@ -114,7 +118,7 @@
         li.className = "stop reveal";
         li.setAttribute("data-side", side);
         li.setAttribute("data-ic", key);
-        li.style.transitionDelay = (Math.min(i, 4) * 70) + "ms";
+        li.style.transitionDelay = (Math.min(i, 4) * 60) + "ms";
         li.innerHTML =
           '<span class="node" aria-hidden="true">' +
             '<span class="node__ring"></span>' +
@@ -144,11 +148,6 @@
       flights.push(wrap);
     });
   }
-
-  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var hoverFine = window.matchMedia("(hover: hover) and (min-width:861px)").matches;
-  var hasGSAP = !reduce && !!window.gsap && !!window.ScrollTrigger;
-  if (hasGSAP) gsap.registerPlugin(ScrollTrigger);
 
   var uidSeed = 0;
 
@@ -217,15 +216,23 @@
           '<stop offset="0.74" stop-color="#F2A93B"/>' +
           '<stop offset="1" stop-color="#D9481F"/>' +
         '</linearGradient>' +
-        '<mask id="' + uid + 'm"><rect x="-80" y="-90" width="' + (W + 160) + '" height="0" fill="#fff"/></mask>' +
       '</defs>' +
+      '<path class="flight__glow" d="' + d + '"/>' +
       '<path class="flight__base" d="' + d + '"/>' +
-      '<path class="flight__prog" d="' + d + '" mask="url(#' + uid + 'm)"/>';
+      '<path class="flight__prog" d="' + d + '" stroke="url(#' + uid + 'g)"/>' +
+      '<path class="flight__tail2" d="' + d + '"/>' +
+      '<path class="flight__tail" d="' + d + '"/>';
 
     var base = svg.querySelector(".flight__base");
     var prog = svg.querySelector(".flight__prog");
-    var rect = svg.querySelector("rect");
+    var glow = svg.querySelector(".flight__glow");
+    var tail = svg.querySelector(".flight__tail");
+    var tail2 = svg.querySelector(".flight__tail2");
     var L = base.getTotalLength();
+    prog.style.strokeDasharray = L;
+    glow.style.strokeDasharray = L;
+    prog.style.strokeDashoffset = L;
+    glow.style.strokeDashoffset = L;
 
     var step = Math.max(2, L / 1400);
     var samples = [];
@@ -239,33 +246,73 @@
       n.len = bl; n.hit = false;
     });
 
-    var f = { wrap: wrap, svg: svg, plane: plane, base: base, prog: prog, rect: rect, nodes: nodes, L: L, uid: uid, fixed: false };
+    var tailLen = Math.min(200, L * 0.16);
+    var tailLen2 = Math.min(460, L * 0.32);
+    tail.style.strokeDasharray = tailLen + " " + (L + 20);
+    tail2.style.strokeDasharray = tailLen2 + " " + (L + 20);
+    tail.style.strokeDashoffset = tailLen;
+    tail2.style.strokeDashoffset = tailLen2;
+
+    var f = {
+      wrap: wrap, svg: svg, plane: plane, base: base, prog: prog, glow: glow,
+      tail: tail, tail2: tail2, nodes: nodes, L: L, uid: uid,
+      fixed: false, tailLen: tailLen, tailLen2: tailLen2, lastPuff: 0
+    };
     wrap.__flight = f;
     return f;
   }
 
   function staticFlight(f) {
     f.fixed = true;
-    f.base.setAttribute("stroke", "url(#" + f.uid + "g)");
+    f.prog.style.strokeDashoffset = 0;
+    f.glow.style.strokeDashoffset = 0;
+    f.tail.style.display = "none";
+    f.tail2.style.display = "none";
+    f.plane.style.display = "none";
     f.nodes.forEach(function (n) { n.el.classList.add("on"); });
   }
 
   function renderFlight(f, p) {
-    if (f.fixed) {
-      f.prog.style.opacity = "0";
-      f.plane.style.display = "none";
-      return;
-    }
+    if (f.fixed) return;
     var dist = p * f.L;
     var pt = f.base.getPointAtLength(dist);
     var pt2 = f.base.getPointAtLength(Math.min(f.L, dist + 3));
     var ang = Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI;
     f.plane.style.transform = "translate(" + r1(pt.x) + "px," + r1(pt.y) + "px) rotate(" + r1(ang + 45) + "deg)";
-    f.rect.setAttribute("height", Math.max(0, pt.y + 90));
+    f.prog.style.strokeDashoffset = (f.L - dist);
+    f.glow.style.strokeDashoffset = (f.L - dist);
+    f.tail.style.strokeDashoffset = (f.tailLen - dist);
+    f.tail2.style.strokeDashoffset = (f.tailLen2 - dist);
+
+    if (dist - f.lastPuff > 120 && dist > 40) {
+      f.lastPuff = dist;
+      spawnPuff(f, pt.x, pt.y);
+    }
+
     f.nodes.forEach(function (n) {
       if (!n.hit && dist >= n.len - 0.5) { n.hit = true; touchNode(n); }
       else if (n.hit && dist < n.len - 10) { n.hit = false; n.el.classList.remove("on"); }
     });
+  }
+
+  function spawnPuff(f, x, y) {
+    if (document.querySelectorAll(".puff").length > 40) return;
+    var el = document.createElement("span");
+    el.className = "puff";
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    f.wrap.appendChild(el);
+    if (hasGSAP) {
+      gsap.fromTo(el, { scale: 0.55, opacity: 0.5 }, {
+        scale: gsap.utils.random(1.8, 3.1), opacity: 0,
+        x: gsap.utils.random(-18, 18), y: gsap.utils.random(-8, 18),
+        duration: gsap.utils.random(0.9, 1.4), ease: "power1.out",
+        onComplete: function () { el.remove(); }
+      });
+    } else {
+      requestAnimationFrame(function () { el.classList.add("puff--go"); });
+      setTimeout(function () { el.remove(); }, 1300);
+    }
   }
 
   function touchNode(n) {
@@ -274,9 +321,27 @@
     var ring = n.el.querySelector(".node__ring");
     var ico = n.el.querySelector(".node__ico");
     gsap.killTweensOf([n.el, ring, ico]);
-    gsap.fromTo(n.el, { scale: 1 }, { scale: 1.26, duration: 0.2, ease: "power2.out", yoyo: true, repeat: 1 });
-    if (ring) gsap.fromTo(ring, { scale: 0.5, opacity: 0.9 }, { scale: 2.7, opacity: 0, duration: 0.8, ease: "power2.out" });
-    if (ico) gsap.fromTo(ico, { rotate: -18, scale: 0.7 }, { rotate: 0, scale: 1, duration: 0.55, ease: "back.out(2)" });
+    gsap.fromTo(n.el, { scale: 1 }, { scale: 1.3, duration: 0.2, ease: "power2.out", yoyo: true, repeat: 1 });
+    if (ico) gsap.fromTo(ico, { rotateY: -180, scale: 0.5, opacity: 0 }, { rotateY: 0, scale: 1, opacity: 1, duration: 0.7, ease: "back.out(1.5)" });
+    if (ring) {
+      gsap.fromTo(ring, { scale: 0.4, opacity: 0.95 }, { scale: 3.4, opacity: 0, duration: 0.9, ease: "power3.out" });
+      var ring2 = document.createElement("span");
+      ring2.className = "node__ring node__ring--2";
+      n.el.appendChild(ring2);
+      gsap.fromTo(ring2, { scale: 0.4, opacity: 0.75 }, { scale: 2.5, opacity: 0, duration: 0.75, delay: 0.12, ease: "power3.out", onComplete: function () { ring2.remove(); } });
+    }
+    for (var i = 0; i < 7; i++) {
+      var s = document.createElement("span");
+      s.className = "spark";
+      n.el.appendChild(s);
+      var a = (Math.PI * 2 * i) / 7 + Math.random() * 0.6;
+      var rr = gsap.utils.random(24, 46);
+      gsap.fromTo(s, { x: 0, y: 0, opacity: 1, scale: 1 }, {
+        x: Math.cos(a) * rr, y: Math.sin(a) * rr, opacity: 0, scale: 0.2,
+        duration: gsap.utils.random(0.55, 0.95), ease: "power2.out",
+        onComplete: (function (el) { return function () { el.remove(); }; })(s)
+      });
+    }
   }
 
   function buildFlights() {
@@ -327,11 +392,9 @@
 
   if (hasGSAP) {
     ScrollTrigger.batch(".reveal", {
-      start: "top 88%",
+      start: "top 92%",
       onEnter: function (batch) {
-        batch.forEach(function (el, i) {
-          setTimeout(function () { el.classList.add("in"); }, i * 80);
-        });
+        batch.forEach(function (el) { el.classList.add("in"); });
       }
     });
 
@@ -385,13 +448,15 @@
       scrollTrigger: { trigger: ".stepper", start: "top 82%", once: true }
     });
 
-    gsap.utils.toArray(".card__media img").forEach(function (img) {
-      gsap.fromTo(img, { yPercent: -6 }, {
-        yPercent: 6, ease: "none",
-        scrollTrigger: { trigger: img.closest(".stop"), start: "top bottom", end: "bottom top", scrub: true }
+    if (hoverFine) {
+      gsap.utils.toArray(".card__media img").forEach(function (img) {
+        gsap.fromTo(img, { yPercent: -6 }, {
+          yPercent: 6, ease: "none",
+          scrollTrigger: { trigger: img.closest(".stop"), start: "top bottom", end: "bottom top", scrub: true }
+        });
+        gsap.set(img, { scale: 1.18 });
       });
-      gsap.set(img, { scale: 1.18 });
-    });
+    }
 
     gsap.utils.toArray(".stat b").forEach(function (el) {
       var raw = el.textContent;
@@ -483,17 +548,45 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { refreshFlights(); });
   }
 
-  var nav = document.getElementById("nav");
   var prog = document.getElementById("progress");
+  if (prog) {
+    var pp = document.createElement("span");
+    pp.className = "progress__plane";
+    pp.innerHTML = PLANE;
+    prog.appendChild(pp);
+  }
+
+  var nav = document.getElementById("nav");
   var hero = document.querySelector(".hero");
   var tabbar = document.getElementById("tabbar");
   var tabs = tabbar ? Array.prototype.slice.call(tabbar.querySelectorAll("a")) : [];
   var tabTargets = tabs.map(function (t) { return document.getElementById(t.dataset.target); });
 
+  var hud = null, stopList = [];
+  if (document.querySelector(".day")) {
+    hud = document.createElement("div");
+    hud.className = "hud";
+    hud.id = "hud";
+    hud.innerHTML = '<span class="hud__ico">' + PLANE + '</span><span class="hud__txt"><b></b><i></i></span>';
+    document.body.appendChild(hud);
+    Array.prototype.forEach.call(document.querySelectorAll(".day"), function (day, di) {
+      var stops = day.querySelectorAll(".stop");
+      var dnum = day.querySelector(".day-num") ? day.querySelector(".day-num").textContent : (di + 1);
+      Array.prototype.forEach.call(stops, function (st, si) {
+        var h3 = st.querySelector(".card__body h3");
+        stopList.push({ el: st, di: di, si: si, total: stops.length, dnum: dnum, name: h3 ? h3.textContent : "" });
+      });
+    });
+  }
+  function measureStops() {
+    var sy = window.scrollY || document.documentElement.scrollTop;
+    stopList.forEach(function (s) { s.top = s.el.getBoundingClientRect().top + sy; });
+  }
+
   function onScroll() {
     var y = window.scrollY || document.documentElement.scrollTop;
     var h = document.documentElement.scrollHeight - window.innerHeight;
-    prog.style.width = (h > 0 ? (y / h * 100) : 0) + "%";
+    if (prog) prog.style.width = (h > 0 ? (y / h * 100) : 0) + "%";
     var past = hero ? y > hero.offsetHeight - 120 : y > 200;
     nav.classList.toggle("show", past);
     if (tabbar) tabbar.classList.toggle("show", past);
@@ -501,8 +594,23 @@
     var idx = 0;
     tabTargets.forEach(function (el, i) { if (el && (el.getBoundingClientRect().top + y) <= mark) idx = i; });
     tabs.forEach(function (t, i) { t.classList.toggle("active", i === idx); });
+
+    if (hud) {
+      var cur = null;
+      var cmark = y + window.innerHeight * 0.42;
+      for (var i = 0; i < stopList.length; i++) {
+        if (stopList[i].top <= cmark) cur = stopList[i]; else break;
+      }
+      var inTimeline = cur && y > (hero ? hero.offsetHeight - 200 : 150);
+      hud.classList.toggle("show", !!inTimeline);
+      if (inTimeline) {
+        hud.querySelector("b").textContent = "Ng\u00e0y " + cur.dnum + " \u00b7 " + (cur.si + 1) + "/" + cur.total;
+        hud.querySelector("i").textContent = cur.name;
+      }
+    }
   }
   window.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", onScroll);
+  window.addEventListener("resize", function () { measureStops(); onScroll(); });
+  measureStops();
   onScroll();
 })();
