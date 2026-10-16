@@ -259,24 +259,37 @@ section{position:relative}
 
 .stops-wrap{position:relative}
 .stops{list-style:none;margin:0;padding:0}
-.rail{
-  position:absolute;top:.5rem;bottom:.5rem;left:calc(50% - 1px);width:2px;transform:scaleY(0);transform-origin:top;
-  background:linear-gradient(180deg,var(--moss),var(--sky) 50%,var(--gold));
-  border-radius:2px;opacity:.55;
+.flight{position:absolute;inset:0;z-index:1;overflow:visible;pointer-events:none}
+.flight__base{fill:none;stroke:rgba(19,80,58,.16);stroke-width:2.4;stroke-dasharray:9 9;stroke-linecap:round}
+.flight__prog{fill:none;stroke-width:3.1;stroke-dasharray:9 9;stroke-linecap:round;filter:drop-shadow(0 2px 7px rgba(47,163,107,.4))}
+.plane{
+  position:absolute;top:0;left:0;z-index:2;width:44px;height:44px;margin:-22px 0 0 -22px;
+  pointer-events:none;will-change:transform;filter:drop-shadow(0 9px 13px rgba(16,60,40,.4));
 }
+.plane>svg{width:100%;height:100%;animation:planeBank 3.4s ease-in-out infinite}
+@keyframes planeBank{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
 .stop{position:relative;display:grid;grid-template-columns:1fr 1fr;margin-bottom:2.4rem;perspective:1200px}
 .stop .node{
-  position:absolute;left:calc(50% - 8px);top:calc(2.5rem - 8px);width:16px;height:16px;border-radius:50%;
-  background:var(--paper);border:3px solid var(--moss);z-index:2;box-shadow:0 0 0 5px var(--paper);
+  position:absolute;left:calc(50% - 21px);top:calc(2.5rem - 21px);width:42px;height:42px;border-radius:50%;
+  display:grid;place-items:center;background:var(--paper-2);border:2px solid var(--moss);color:var(--pine);
+  z-index:5;box-shadow:0 0 0 6px var(--paper),0 8px 20px -10px rgba(20,40,30,.5);
+  transition:background .35s,border-color .35s,color .35s,box-shadow .35s;
 }
-.stop[data-side="right"] .node{border-color:var(--clay)}
+.stop[data-side="right"] .node{border-color:var(--clay);color:var(--clay-2)}
+.node__ico{display:grid;place-items:center}
+.node__ico svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.node__ring{position:absolute;inset:-2px;border-radius:50%;border:2px solid var(--moss);opacity:0;pointer-events:none}
+.node.on{background:var(--grad-fresh);border-color:transparent;color:#fff;box-shadow:0 0 0 6px var(--paper),0 12px 26px -10px rgba(47,163,107,.9)}
+.node.on .node__ring{border-color:var(--sky)}
+.stop[data-side="right"] .node.on{background:var(--grad-warm)}
+.stop[data-side="right"] .node.on .node__ring{border-color:var(--gold)}
 .card{
   grid-row:1;background:var(--paper-2);border:1px solid var(--line-soft);border-radius:20px;overflow:hidden;
   box-shadow:var(--shadow);transition:box-shadow .5s,transform .6s cubic-bezier(.2,.7,.2,1);
   display:flex;flex-direction:column;transform-style:preserve-3d;will-change:transform;
 }
-.stop[data-side="left"] .card{grid-column:1;margin-right:3.4rem}
-.stop[data-side="right"] .card{grid-column:2;margin-left:3.4rem}
+.stop[data-side="left"] .card{grid-column:1;margin-right:5rem}
+.stop[data-side="right"] .card{grid-column:2;margin-left:5rem}
 .card:hover{box-shadow:var(--shadow-lift)}
 .card__media{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--pine)}
 .card__media::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,transparent 46%, rgba(14,34,24,.6))}
@@ -317,10 +330,9 @@ section{position:relative}
   .stop[data-side="left"] .card__body{text-align:left}
 }
 @media(max-width:860px){
-  .rail{left:calc(14px - 1px);transform:scaleY(1)}
   .stop{grid-template-columns:1fr}
-  .stop .node{left:calc(14px - 8px);top:calc(2.2rem - 8px)}
-  .stop[data-side="left"] .card,.stop[data-side="right"] .card{grid-column:1;margin:0 0 0 46px}
+  .stop .node{left:calc(22px - 21px);top:calc(2.2rem - 21px)}
+  .stop[data-side="left"] .card,.stop[data-side="right"] .card{grid-column:1;margin:0 0 0 58px}
   .tabbar{display:flex}
   .tour-fab{display:flex}
   footer{padding-bottom:6.5rem}
@@ -352,10 +364,9 @@ footer a:hover{border-color:#FFDD8A}
   .hero__bg img{transform:scale(1.06)}
   .hero__title .l__in{transform:none!important;opacity:1!important}
   .stepper::before{transform:scaleX(1)}
-  .rail{transform:scaleY(1)}
 }
 @media print{
-  .nav,.progress,.scrollcue,.hero__leaves,.hero__glow,.hero__orbs,.bg-aurora,footer::before{display:none!important}
+  .nav,.progress,.scrollcue,.hero__leaves,.hero__glow,.hero__orbs,.bg-aurora,.flight,.plane,footer::before{display:none!important}
   .hero{min-height:auto;color:#111}
   .reveal{opacity:1!important;transform:none!important}
   body::after{display:none}
